@@ -15,6 +15,7 @@ def app():
     app = create_app(TestConfig)
 
     with app.app_context():
+        from app.models import Estudiante, Grupo, inscripciones
         db.create_all()
         yield app
         db.session.remove()
