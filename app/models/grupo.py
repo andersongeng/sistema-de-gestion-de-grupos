@@ -1,5 +1,5 @@
 from app.extensions import db
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 class Grupo(db.Model):
     __tablename__ = 'grupos'
@@ -7,3 +7,8 @@ class Grupo(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     numero: Mapped[int] = mapped_column(nullable=False)
     
+    estudiantes = relationship(
+        'Estudiante',
+        secondary='inscripciones',
+        back_populates='grupos'
+    )
