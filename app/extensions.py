@@ -1,9 +1,11 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from flask_migrate import Migrate
 
 class Base(DeclarativeBase):
     __abstract__ = True
+
+    id: Mapped[int] = mapped_column(primary_key=True)
 
     @classmethod
     def create(cls, **kwargs):
