@@ -120,3 +120,26 @@ def test_estudiante_create_method(app):
     estudiante_db = Estudiante.query.filter_by(cedula=123).first()
     assert estudiante_db is not None
     assert estudiante_db.id == nuevo_estudiante.id
+
+def test_polimorfismo_base_model(app):
+    # 1. Prueba con estudiante
+    estudiante = Estudiante.create(
+        nombre="Anderson",
+        apellido="Granado",
+        cedula=1
+    )
+
+    # 2. Prueba con grupo
+    grupo = Grupo.create(
+        numero=1
+    )
+
+    # Verificacion de polimorfismo
+    assert isinstance(estudiante, Estudiante)
+    assert isinstance(grupo, Grupo)
+
+    assert Estudiante.query.count() == 1
+    assert Grupo.query.count() == 1
+
+    assert estudiante.id is not None
+    assert grupo.id is not None
