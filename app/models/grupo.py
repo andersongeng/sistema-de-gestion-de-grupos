@@ -12,3 +12,6 @@ class Grupo(db.Model):
         secondary='inscripciones',
         back_populates='grupos'
     )
+
+    def __repr__(self):
+        return f'<Grupo numero: {self.numero}>'
