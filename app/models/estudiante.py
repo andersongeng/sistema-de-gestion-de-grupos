@@ -14,3 +14,21 @@ class Estudiante(db.Model):
         secondary='inscripciones',
         back_populates='estudiantes'
     )
+
+    def __repr__(self):
+        return f'<Estudiante {self.cedula}: {self.nombre} {self.apellido}>'
+    
+    @classmethod
+    def create(cls, **kwargs):
+        """
+        Crea un nuevo estudiante y lo guarda en la base de datos.
+        Uso: Estudiante.create(nombre="John", apellido="Doe", cedula=123456789)
+        """
+        try:
+            nuevo_estudiante = cls(**kwargs)
+            db.session.add(nuevo_estudiante)
+            db.session.commit()
+            return nuevo_estudiante
+        except Exception as e:
+            db.session.rollback()
+            raise e
