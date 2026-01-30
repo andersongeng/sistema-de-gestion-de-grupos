@@ -6,4 +6,8 @@ class Evaluacion(db.Model):
 
     titulo: Mapped[str] = mapped_column(nullable=False)
 
-    
+    grupos = relationship(
+        'Grupo',
+        backref='evaluation',
+        lazy=True
+    )
