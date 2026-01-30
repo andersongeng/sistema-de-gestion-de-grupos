@@ -1,6 +1,7 @@
 from app.extensions import db
 from app.models.estudiante import Estudiante
 from app.models.grupo import Grupo
+from app.models.evaluacion import Evaluacion
 
 def test_crear_estudiante(app):
     """
@@ -34,9 +35,14 @@ def test_crear_grupo(app):
     El argumento 'app' viene de el fixture en conftest.py
     """
 
+    evaluacion_temporal = Evaluacion.create(
+        titulo="Evaluacion 1"
+    )
+
     # 1. Crear el registro
     nuevo_grupo = Grupo(
-        numero=1
+        numero=1,
+        evaluacion_id=evaluacion_temporal.id
     )
 
     # 2. Abrir el contexto de la base de datos para operar
@@ -71,8 +77,13 @@ def test_crear_inscripcion(app):
         cedula=2
     )
 
+    evaluacion = Evaluacion.create(
+        titulo="Evaluacion 1"
+    )
+
     nuevo_grupo = Grupo(
-        numero=1
+        numero=1,
+        evaluacion_id=evaluacion.id
     )
 
     # 2. Abrir el contexto de la base de datos para operar
@@ -129,9 +140,14 @@ def test_polimorfismo_base_model(app):
         cedula=1
     )
 
+    evaluacion = Evaluacion.create(
+        titulo="Evaluacion 1"
+    )
+
     # 2. Prueba con grupo
     grupo = Grupo.create(
-        numero=1
+        numero=1,
+        evaluacion_id=evaluacion.id
     )
 
     # Verificacion de polimorfismo
@@ -143,3 +159,67 @@ def test_polimorfismo_base_model(app):
 
     assert estudiante.id is not None
     assert grupo.id is not None
+
+def test_grupo_tiene_evaluacion(app):
+    """
+    Prueba de la relacion 1:N entre Evaluacion y Grupo (Equipo)
+    """
+
+    # 1. Crear la evaluacion
+    evaluacion = Evaluacion.create(
+        titulo="Evaluacion 1"
+    )
+
+    # 2. Crear un grupo asociado
+    grupo = Grupo.create(
+        numero=1,
+        evaluacion_id=evaluacion.id
+    )
+
+    # Verificar que el grupo se creó
+    assert grupo.id is not None
+    assert grupo.numero == 1
+
+    # Verificar la relacion desde el lado del grupo
+    assert grupo.evaluacion_id == evaluacion.id
+    assert grupo.evaluation.titulo == "Evaluacion 1"
+
+    # Verificar la relacion desde el lado de la Evaluacion
+    assert len(evaluacion.grupos) == 1
+    assert evaluacion.grupos[0].numero == 1
+
+def test_evaluacion_con_multiples_grupos(app):
+    """
+    Prueba que una evaluacion pueda tener varios grupos distintos
+    """
+
+    # 1. Crear la evaluacion
+    evaluacion = Evaluacion.create(
+        titulo="Evaluacion 1"
+    )
+
+    # 2. Crear varios grupos asociados
+    numeros_grupos = [1, 2, 3]
+    grupos_creados = []
+
+    for numero in numeros_grupos:
+        nuevo_grupo = Grupo.create(
+            numero=numero,
+            evaluacion_id=evaluacion.id
+        )
+        grupos_creados.append(nuevo_grupo)
+
+    # Verificar que se crearon los 3 grupos en la bd
+    assert len(grupos_creados) == 3
+
+    # Verificar que la evaluacion reconoce a sus 3 hijos
+    assert len(evaluacion.grupos) == 3
+
+    # Verificar que los numeros coinciden para asegurar el orden
+    numeros_en_db = [grupo.numero for grupo in evaluacion.grupos]
+    for numero in numeros_grupos:
+        assert numero in numeros_en_db
+
+    # Verificar pertenencia unica
+    for grupo in evaluacion.grupos:
+        assert grupo.evaluacion_id == evaluacion.id
