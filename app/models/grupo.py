@@ -4,7 +4,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 class Grupo(db.Model):
     __tablename__ = 'grupos'
 
-    id: Mapped[int] = mapped_column(primary_key=True)
     numero: Mapped[int] = mapped_column(nullable=False)
     
     estudiantes = relationship(
