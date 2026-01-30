@@ -94,3 +94,29 @@ def test_crear_inscripcion(app):
         # 5. Verificacion de vuelta: El estudiante sabe en que grupo esta
         assert len(estudiante_1.grupos) == 1
         assert nuevo_grupo in estudiante_1.grupos
+
+def test_estudiante_create_method(app):
+    """
+    Prueba que el metodo crea un nuevo estudiante
+    y lo guarda en la base de datos.
+    """
+
+    # 1. Datos de prueba
+
+    datos = {
+        'nombre': 'Fulano',
+        'apellido': 'De Tal',
+        'cedula': 123
+    }
+
+    # 2. Ejecutar el metodo
+    nuevo_estudiante = Estudiante.create(**datos)
+
+    # 3. Verificar que el estudiante fue creado correctamente
+    assert nuevo_estudiante is not None
+    assert nuevo_estudiante.cedula == 123
+    assert nuevo_estudiante.id is not None
+
+    estudiante_db = Estudiante.query.filter_by(cedula=123).first()
+    assert estudiante_db is not None
+    assert estudiante_db.id == nuevo_estudiante.id
