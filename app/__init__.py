@@ -15,5 +15,7 @@ def create_app(config_class=Config):
     migrate.init_app(app, db)
 
     # Register blueprints
+    from app.routes.evaluacion_route import evaluacion_bp
+    app.register_blueprint(evaluacion_bp)
 
     return app
