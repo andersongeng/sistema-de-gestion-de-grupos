@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Listar Evaluaciones</title>
+</head>
+<body>
+  <h1>Evaluaciones</h1>
+
+  <form method="post" action="{{ url_for('evaluacion_bp.crear_evaluacion') }}">
+    <label for="titulo">Título:</label>
+    <input type="text" id="titulo" name="titulo" required>
+    <button type="submit">Crear evaluación</button>
+  </form>
+
+  <h2>Listado</h2>
+  <ul>
+    {% for ev in evaluaciones %}
+      <li>{{ ev.id }} - {{ ev.titulo }}</li>
+    {% else %}
+      <li>No hay evaluaciones.</li>
+    {% endfor %}
+  </ul>
+</body>
+</html>
