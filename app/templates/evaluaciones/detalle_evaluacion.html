@@ -1,61 +1,542 @@
 <!doctype html>
 <html lang="es">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
   <title>Detalle de Evaluación</title>
 </head>
+
 <body>
-  <h1>{{ evaluacion.titulo }}</h1>
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <a href="{{ url_for('evaluacion_bp.listar_evaluaciones') }}"
+        style="color:var(--text-dark); display:flex; align-items:center;" aria-label="Volver">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+      </a>
+      <h1 style="margin:0;">{{ evaluacion.titulo }}</h1>
+    </div>
+    <button type="button" id="btn-config-eval"
+      style="background:transparent; border:none; padding:8px; cursor:pointer; color:var(--text-dark);"
+      aria-label="Configuración">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"
+        stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    </button>
+  </div>
   <p><strong>ID:</strong> {{ evaluacion.id }}</p>
 
   <h2>Grupos</h2>
-  <ul>
+  <ul class="groups-list">
+
+    <!-- Group detail modal (in-page window) -->
+    <div id="group-detail-modal" class="modal-backdrop" style="display:none;">
+      <div class="modal modal--large" style="position:relative;">
+        <div class="modal-content">Cargando...</div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const modal = document.getElementById('group-detail-modal');
+        if (modal) {
+          // close when clicking outside the modal content
+          modal.addEventListener('click', function (e) {
+            // care must be taken: inner modals (config) might be part of modal-content
+            // we only close if clicking strictly on the backdrop (modal)
+            // or check if target is NOT part of modal-content?
+            // The structure is: 
+            // <div id="group-detail-modal" class="modal-backdrop"> 
+            //    <div class="modal modal--large"> ... </div>
+            // </div>
+            // The event listener is on `modal` (the backdrop).
+            // If we click the backdrop, e.target === modal.
+            if (e.target === modal) modal.style.display = 'none';
+          });
+        }
+      })();
+    </script>
     {% for grupo in evaluacion.grupos %}
-      <li>Grupo {{ grupo.numero }} — {{ grupo.estudiantes|length }} estudiantes</li>
+    <li>
+      <div class="group-card" data-grupo-id="{{ grupo.id }}" tabindex="0" role="button" aria-pressed="false">
+        <a href="{{ url_for('groups_bp.detalle_grupo', id=grupo.id) }}" class="open-group"
+          data-grupo-id="{{ grupo.id }}">Grupo {{ grupo.numero }}</a>
+        <div class="group-students">
+          <ul>
+            {% for estudiante in grupo.estudiantes %}
+            <li>{{ estudiante.nombre }} {{ estudiante.apellido }} — {{ estudiante.cedula }}</li>
+            {% else %}
+            <li>No hay estudiantes.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </li>
     {% else %}
-      <li>No hay grupos asignados.</li>
+    <li>No hay grupos asignados.</li>
     {% endfor %}
   </ul>
 
-  <h3>Crear nuevo grupo</h3>
-  <form id="crear-grupo-form">
-    <label for="numero">Número:</label>
-    <input type="number" id="numero" name="numero" required min="1">
-    <input type="hidden" id="evaluacion_id" name="evaluacion_id" value="{{ evaluacion.id }}">
-    <button type="submit">Crear grupo</button>
-    <span id="grupo-msg" role="status" aria-live="polite" style="margin-left:8px"></span>
-  </form>
+  <!-- Spacer to prevent content from being hidden behind the fixed button -->
+  <div style="height: 100px;"></div>
+
+  <!-- Button to open create group modal -->
+  <button id="btn-open-create-group"
+    style="position:fixed; bottom:0; left:0; width:100%; padding:1rem; font-size:1.1rem; margin:0; border-radius:12px 12px 0 0; z-index:100; box-shadow:0 -2px 10px rgba(0,0,0,0.1);">Crear
+    grupo</button>
+
+  <!-- Modal for Creating Group -->
+  <div id="create-group-modal" class="modal-backdrop" style="display:none; z-index:1301;">
+    <div class="modal modal--small" style="max-width:400px;">
+      <h3 style="margin-top:0;">Crear nuevo grupo</h3>
+      <form id="crear-grupo-form">
+        <label for="numero">Número (opcional):</label>
+        <input type="number" id="numero" name="numero" min="1" style="margin-bottom:1.5rem;">
+        <input type="hidden" id="evaluacion_id" name="evaluacion_id" value="{{ evaluacion.id }}">
+
+        <div style="display:flex; gap:1rem; justify-content:flex-end;">
+          <button type="button" id="btn-close-create-group" class="btn secondary">Cancelar</button>
+          <button type="submit">Crear grupo</button>
+        </div>
+
+        <span id="grupo-msg" role="status" aria-live="polite"
+          style="display:block; margin-top:0.5rem; color:#d00;"></span>
+      </form>
+    </div>
+  </div>
+
+  <!-- Local Modal for Config Evaluation -->
+  <div id="config-eval-modal" class="modal-backdrop" style="display:none; z-index:1300;">
+    <div class="modal modal--small" style="max-width:400px;">
+      <h3 style="margin-top:0; text-align:center;">Configuración</h3>
+      <div style="text-align:center; margin-top:2rem;">
+        <div class="warning" style="margin-bottom:1rem;">Advertencia: eliminar esta evaluación eliminará todos sus
+          grupos.</div>
+        <button type="button" class="delete-evaluacion btn-danger" data-evaluacion-id="{{ evaluacion.id }}">Eliminar
+          evaluación</button>
+      </div>
+      <div style="text-align:center; margin-top:2rem;">
+        <button type="button" id="btn-close-config" class="btn secondary">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal to add students -->
+  <div id="add-students-modal" class="modal-backdrop" style="display:none;">
+    <div class="modal modal--small" style="position:relative; z-index:1201;">
+      <h4>Añadir estudiantes al grupo <span id="modal-grupo-num"></span></h4>
+      <p>Agrega una fila por estudiante. Complete <code>cedula</code> y opcionalmente <code>nombre</code>,
+        <code>apellido</code>.
+      </p>
+
+      <div id="students-rows" style="margin-bottom:8px">
+        <!-- rows inserted here -->
+      </div>
+
+      <div style="margin-bottom:8px">
+        <button id="add-row-btn">Agregar fila</button>
+      </div>
+
+      <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+        <button id="add-students-submit">Agregar estudiantes</button>
+        <button id="add-students-cancel">Cancelar</button>
+        <span id="add-students-msg"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Modal for Student Addition -->
+  <div id="error-modal" class="modal-backdrop" style="display:none; z-index:1500;">
+    <div class="modal modal--small" style="max-width:350px;">
+      <h3 style="margin-top:0; color:#d00;">Error</h3>
+      <p id="error-modal-msg" style="white-space:pre-wrap;"></p>
+      <div style="text-align:right; margin-top:1rem;">
+        <button type="button" id="btn-close-error" class="btn secondary">Cerrar</button>
+      </div>
+    </div>
+  </div>
 
   <script>
-  (function(){
-    const form = document.getElementById('crear-grupo-form');
-    const msg = document.getElementById('grupo-msg');
-    form.addEventListener('submit', async function(e){
-      e.preventDefault();
-      msg.textContent = '';
-      const numero = document.getElementById('numero').value;
-      const evaluacion_id = document.getElementById('evaluacion_id').value;
-      try {
-        const res = await fetch("{{ url_for('groups_bp.crear_grupo') }}", {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ numero: Number(numero), evaluacion_id: Number(evaluacion_id) })
-        });
-        if (res.ok) {
-          msg.textContent = 'Grupo creado.';
-          window.location.reload();
+    (function () {
+      const form = document.getElementById('crear-grupo-form');
+      const msg = document.getElementById('grupo-msg');
+      const modal = document.getElementById('add-students-modal');
+      const studentsText = document.getElementById('students-text');
+      const modalGrupoNum = document.getElementById('modal-grupo-num');
+      const addSubmit = document.getElementById('add-students-submit');
+      const addCancel = document.getElementById('add-students-cancel');
+      const addMsg = document.getElementById('add-students-msg');
+
+      const crearUrl = "{{ url_for('groups_bp.crear_grupo') }}";
+      const estudiantesEndpointTemplate = "{{ url_for('groups_bp.agregar_estudiantes_grupo', id=0) }}"; // replace 0
+
+      function openModal(grupoId, numero) {
+        modal.style.display = 'block';
+        modal.dataset.grupoId = grupoId;
+        modalGrupoNum.textContent = numero;
+        studentsText.value = '';
+        addMsg.textContent = '';
+      }
+      function closeModal() { modal.style.display = 'none'; }
+
+      // Error modal helpers
+      const errorModal = document.getElementById('error-modal');
+      const errorModalMsg = document.getElementById('error-modal-msg');
+      const btnCloseError = document.getElementById('btn-close-error');
+
+      function showError(message) {
+        if (errorModal && errorModalMsg) {
+          errorModalMsg.textContent = message;
+          errorModal.style.display = 'flex';
         } else {
-          const data = await res.json().catch(() => ({}));
-          msg.textContent = data.error || 'Error al crear grupo';
+          alert(message);
         }
-      } catch (err) {
-        msg.textContent = 'Error de red';
+      }
+      if (btnCloseError) {
+        btnCloseError.addEventListener('click', function () {
+          errorModal.style.display = 'none';
+        });
+      }
+      if (errorModal) {
+        errorModal.addEventListener('click', function (e) {
+          if (e.target === errorModal) errorModal.style.display = 'none';
+        });
+      }
+
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        msg.textContent = '';
+        const numeroInput = document.getElementById('numero').value;
+        const evaluacion_id = document.getElementById('evaluacion_id').value;
+        const payload = { evaluacion_id: Number(evaluacion_id) };
+        if (numeroInput) payload.numero = Number(numeroInput);
+        try {
+          const res = await fetch(crearUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            msg.textContent = data.error || 'Error creando grupo';
+            return;
+          }
+
+          // Close create group modal if open
+          const createGroupModal = document.getElementById('create-group-modal');
+          if (createGroupModal) createGroupModal.style.display = 'none';
+
+          // open modal to add estudiantes
+          openModal(data.id, data.numero);
+        } catch (err) {
+          msg.textContent = 'Error de red';
+        }
+      });
+
+      addCancel.addEventListener('click', function () { closeModal(); });
+
+      const rowsContainer = document.getElementById('students-rows');
+      const addRowBtn = document.getElementById('add-row-btn');
+
+      function makeRow() {
+        const row = document.createElement('div');
+        row.className = 'student-row';
+
+        const cedInput = document.createElement('input');
+        cedInput.placeholder = 'cedula';
+        cedInput.name = 'cedula';
+        cedInput.type = 'number';
+
+        const nomInput = document.createElement('input');
+        nomInput.placeholder = 'nombre';
+        nomInput.name = 'nombre';
+
+        const apeInput = document.createElement('input');
+        apeInput.placeholder = 'apellido';
+        apeInput.name = 'apellido';
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.textContent = 'Eliminar';
+        removeBtn.addEventListener('click', () => row.remove());
+
+        row.appendChild(cedInput);
+        row.appendChild(nomInput);
+        row.appendChild(apeInput);
+        row.appendChild(removeBtn);
+
+        return row;
+      }
+
+      addRowBtn.addEventListener('click', function (e) { e.preventDefault(); rowsContainer.appendChild(makeRow()); });
+
+      function ensureOneRow() { if (!rowsContainer.querySelector('.student-row')) rowsContainer.appendChild(makeRow()); }
+
+      addSubmit.addEventListener('click', async function () {
+        addMsg.textContent = '';
+        const rows = Array.from(rowsContainer.querySelectorAll('.student-row'));
+        if (!rows.length) { showError('Ingrese al menos una fila'); return; }
+        const estudiantes = [];
+        for (const r of rows) {
+          const ced = r.querySelector('input[name="cedula"]').value.trim();
+          const nombre = r.querySelector('input[name="nombre"]').value.trim();
+          const apellido = r.querySelector('input[name="apellido"]').value.trim();
+          if (!ced && !nombre && !apellido) continue;
+          if (ced && !(Number.isNaN(Number(ced)))) {
+            estudiantes.push({ cedula: Number(ced), nombre: nombre || undefined, apellido: apellido || undefined });
+          } else {
+            // if cedula missing, skip row (we require cedula to identify/create)
+            if (nombre || apellido) {
+              showError('Cada fila debe incluir cedula para crear o identificar estudiante.');
+              return;
+            }
+          }
+        }
+        if (!estudiantes.length) { showError('No hay estudiantes válidos'); return; }
+
+        const grupoId = modal.dataset.grupoId;
+        const url = estudiantesEndpointTemplate.replace('/0/', '/' + grupoId + '/');
+        try {
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ estudiantes: estudiantes })
+          });
+          const result = await res.json().catch(() => ({}));
+          if (res.ok) {
+            // If server reports conflicts, show them and do not reload
+            if (result.conflicts && result.conflicts.length) {
+              // Separate same-evaluation conflicts (show single-student message)
+              // from inter-evaluation conflicts (group by evaluation title).
+              const sameEvalMsgs = [];
+              const byEval = {};
+              result.conflicts.forEach(c => {
+                if (c.same_evaluacion) {
+                  const name = c.nombre ? `${c.nombre} ${c.apellido || ''}`.trim() : null;
+                  const disp = name ? `${name} - ${c.cedula}` : `Cedula ${c.cedula}`;
+                  sameEvalMsgs.push(`El estudiante ${disp} ya esta en un grupo en esta evaluacion`);
+                  return;
+                }
+                const title = c.evaluacion_titulo || c.evaluacion || (`Evaluacion ${c.existing_group_id || ''}`);
+                if (!byEval[title]) byEval[title] = [];
+                const name = c.nombre ? `${c.nombre} ${c.apellido || ''}`.trim() : null;
+                const disp = name ? `${name} — ${c.cedula}` : String(c.cedula);
+                byEval[title].push(disp);
+              });
+              const interMsgs = Object.keys(byEval).map(t => `Los estudiantes: ${byEval[t].join(', ')} trabajaron en un grupo de la evaluacion ${t}`);
+              const addedCount = Array.isArray(result.added) ? result.added.length : 0;
+              const combined = [].concat(sameEvalMsgs, interMsgs);
+              // Show conflicts in error modal as well, or separate?
+              // User said "The error message". Conflicts are effectively errors/warnings preventing full success.
+              // Let's us showError for this long message too.
+              showError(`${combined.join('\n')}${addedCount ? '\n\nAñadidos: ' + addedCount : ''}`);
+            } else {
+              addMsg.textContent = 'Estudiantes agregados.'; // Success message can stay inline or be a toast
+              setTimeout(() => window.location.reload(), 600);
+            }
+          } else {
+            showError(result.error || 'Error agregando estudiantes');
+          }
+        } catch (err) {
+          showError('Error de red');
+        }
+      });
+
+      // ensure at least one row when modal opens
+      ensureOneRow();
+
+      // open modal when clicking per-group "Agregar estudiante" buttons
+      document.addEventListener('click', function (e) {
+        const btn = e.target.closest && e.target.closest('.open-add-students');
+        if (!btn) return;
+        const grupoId = btn.getAttribute('data-grupo-id');
+        const grupoNum = btn.getAttribute('data-grupo-num');
+        if (grupoId) openModal(grupoId, grupoNum || '');
+      });
+
+      // Make clicking the whole card open the group's detail modal by forwarding
+      // the action to the existing `.open-group` link. Also allow keyboard activation.
+      document.addEventListener('click', function (e) {
+        const card = e.target.closest && e.target.closest('.group-card');
+        if (!card) return;
+        // if the click was directly on the `.open-group` link, that handler will run
+        if (e.target.closest && e.target.closest('.open-group')) return;
+        const link = card.querySelector('.open-group');
+        if (!link) return;
+        e.preventDefault();
+        link.click();
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const el = document.activeElement;
+        if (!el || !el.classList.contains('group-card')) return;
+        const link = el.querySelector('.open-group');
+        if (link) {
+          e.preventDefault();
+          link.click();
+        }
+      });
+
+      // open group details in a modal on the same page when clicking the group link
+      document.addEventListener('click', function (e) {
+        const link = e.target.closest && e.target.closest('.open-group');
+        if (!link) return;
+        e.preventDefault();
+        const href = link.href;
+        const modal = document.getElementById('group-detail-modal');
+        const content = modal.querySelector('.modal-content');
+        content.innerHTML = 'Cargando...';
+        modal.style.display = 'block';
+        fetch(href).then(r => r.text()).then(html => {
+          try {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            content.innerHTML = doc.body.innerHTML;
+          } catch (err) {
+            content.innerHTML = html;
+          }
+        }).catch(() => { content.innerHTML = 'Error cargando detalles'; });
+      });
+
+      // handle delete-group clicks inside the loaded group-detail modal
+      document.addEventListener('click', function (e) {
+        const btn = e.target.closest && e.target.closest('.delete-group');
+        if (!btn) return;
+        e.preventDefault();
+        if (!confirm('¿Eliminar este grupo? Se eliminarán también las inscripciones.')) return;
+        const grupoId = btn.getAttribute('data-grupo-id');
+        const url = '/grupos/' + grupoId;
+        fetch(url, { method: 'DELETE' }).then(async function (res) {
+          if (res.ok) {
+            // close group-detail modal and reload page to reflect deletion
+            const modal = document.getElementById('group-detail-modal');
+            if (modal) modal.style.display = 'none';
+            window.location.reload();
+          } else {
+            let payload = {};
+            try { payload = await res.json(); } catch (e) { }
+            alert(payload.error || 'Error eliminando grupo');
+          }
+        }).catch(function () { alert('Error de red eliminando grupo'); });
+      });
+
+      // handle delete-evaluacion button on the page
+      document.addEventListener('click', function (e) {
+        const btn = e.target.closest && e.target.closest('.delete-evaluacion');
+        if (!btn) return;
+        e.preventDefault();
+        if (!confirm('¿Eliminar esta evaluación y todos sus grupos?')) return;
+        const evaluacionId = btn.getAttribute('data-evaluacion-id');
+        const url = '/evaluaciones/' + evaluacionId;
+        fetch(url, { method: 'DELETE' }).then(async function (res) {
+          if (res.ok) {
+            // redirect to listing
+            window.location.href = "{{ url_for('evaluacion_bp.listar_evaluaciones') }}";
+          } else {
+            let payload = {};
+            try { payload = await res.json(); } catch (e) { }
+            alert(payload.error || 'Error eliminando evaluación');
+          }
+        }).catch(function () { alert('Error de red eliminando evaluación'); });
+      });
+
+      // Config modal logic
+      const configModal = document.getElementById('config-eval-modal');
+      const btnConfig = document.getElementById('btn-config-eval');
+      const btnCloseConfig = document.getElementById('btn-close-config');
+
+      if (btnConfig && configModal) {
+        btnConfig.addEventListener('click', function () { configModal.style.display = 'flex'; });
+      }
+      if (btnCloseConfig && configModal) {
+        btnCloseConfig.addEventListener('click', function () { configModal.style.display = 'none'; });
+      }
+      if (configModal) {
+        configModal.addEventListener('click', function (e) {
+          if (e.target === configModal) configModal.style.display = 'none';
+        });
+      }
+
+      // Create Group Modal Logic
+      const createGroupModal = document.getElementById('create-group-modal');
+      const btnOpenCreateGroup = document.getElementById('btn-open-create-group');
+      const btnCloseCreateGroup = document.getElementById('btn-close-create-group');
+
+      if (btnOpenCreateGroup && createGroupModal) {
+        btnOpenCreateGroup.addEventListener('click', function () {
+          createGroupModal.style.display = 'flex';
+          setTimeout(() => {
+            const input = createGroupModal.querySelector('input[name="numero"]');
+            if (input) input.focus();
+          }, 50);
+        });
+      }
+      if (btnCloseCreateGroup && createGroupModal) {
+        btnCloseCreateGroup.addEventListener('click', function () {
+          createGroupModal.style.display = 'none';
+        });
+      }
+      if (createGroupModal) {
+        createGroupModal.addEventListener('click', function (e) {
+          if (e.target === createGroupModal) createGroupModal.style.display = 'none';
+        });
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && createGroupModal.style.display === 'flex') {
+            createGroupModal.style.display = 'none';
+          }
+        });
+      }
+
+
+
+    })();
+
+    // Delegation for dynamic content in Group Detail Modal
+    document.addEventListener('click', function (e) {
+      // 1. Back arrow closing the group modal
+      const backBtn = e.target.closest && e.target.closest('.back-arrow-group');
+      if (backBtn) {
+        const modal = document.getElementById('group-detail-modal');
+        if (modal && modal.style.display !== 'none' && modal.contains(backBtn)) {
+          e.preventDefault();
+          modal.style.display = 'none';
+        }
+      }
+
+      // 2. Config toggle in group modal
+      const configBtn = e.target.closest && e.target.closest('.btn-config-group');
+      if (configBtn) {
+        const groupConfigModal = document.getElementById('config-group-modal-inner');
+        if (groupConfigModal) {
+          groupConfigModal.style.display = 'flex';
+        }
+      }
+
+      // 3. Close config toggle in group modal
+      const closeConfigBtn = e.target.closest && e.target.closest('#btn-close-config-group');
+      if (closeConfigBtn) {
+        const groupConfigModal = document.getElementById('config-group-modal-inner');
+        if (groupConfigModal) groupConfigModal.style.display = 'none';
+      }
+
+      // 4. Click outside inner config modal to close it
+      // Note: The inner modal is an absolute overlay inside the loaded content.
+      // We check if the click target IS the backdrop (which has the ID).
+      const groupConfigModal = document.getElementById('config-group-modal-inner');
+      if (groupConfigModal && e.target === groupConfigModal) {
+        groupConfigModal.style.display = 'none';
       }
     });
-  })();
   </script>
 
-  <p><a href="{{ url_for('evaluacion_bp.listar_evaluaciones') }}">Volver al listado</a></p>
+
 </body>
+
 </html>
