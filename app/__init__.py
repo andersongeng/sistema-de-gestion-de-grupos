@@ -9,8 +9,13 @@ def create_app(config_class=Config):
 
     # Initialize extensions
     db.init_app(app)
+
+    from app import models
+
     migrate.init_app(app, db)
 
     # Register blueprints
+    from app.routes.evaluacion_route import evaluacion_bp
+    app.register_blueprint(evaluacion_bp)
 
     return app
