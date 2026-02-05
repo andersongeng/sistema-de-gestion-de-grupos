@@ -23,3 +23,10 @@ def crear_evaluacion():
 
     # Redirect to the listing page after creation
     return redirect(url_for('evaluacion_bp.listar_evaluaciones'))
+
+
+@evaluacion_bp.route('/evaluaciones/<int:id>', methods=['GET'])
+def detalle_evaluacion(id: int):
+    """Mostrar una evaluación específica y sus grupos."""
+    evaluacion = Evaluacion.query.get(id)
+    return render_template('evaluaciones/detalle_evaluacion.html', evaluacion=evaluacion)

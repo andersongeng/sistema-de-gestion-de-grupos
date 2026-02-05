@@ -17,7 +17,7 @@
   <h2>Listado</h2>
   <ul>
     {% for ev in evaluaciones %}
-      <li>{{ ev.id }} - {{ ev.titulo }}</li>
+      <li><a href="{{ url_for('evaluacion_bp.detalle_evaluacion', id=ev.id) }}">{{ ev.id }} - {{ ev.titulo }}</a></li>
     {% else %}
       <li>No hay evaluaciones.</li>
     {% endfor %}
