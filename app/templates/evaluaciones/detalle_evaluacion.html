@@ -18,6 +18,44 @@
     {% endfor %}
   </ul>
 
+  <h3>Crear nuevo grupo</h3>
+  <form id="crear-grupo-form">
+    <label for="numero">Número:</label>
+    <input type="number" id="numero" name="numero" required min="1">
+    <input type="hidden" id="evaluacion_id" name="evaluacion_id" value="{{ evaluacion.id }}">
+    <button type="submit">Crear grupo</button>
+    <span id="grupo-msg" role="status" aria-live="polite" style="margin-left:8px"></span>
+  </form>
+
+  <script>
+  (function(){
+    const form = document.getElementById('crear-grupo-form');
+    const msg = document.getElementById('grupo-msg');
+    form.addEventListener('submit', async function(e){
+      e.preventDefault();
+      msg.textContent = '';
+      const numero = document.getElementById('numero').value;
+      const evaluacion_id = document.getElementById('evaluacion_id').value;
+      try {
+        const res = await fetch("{{ url_for('groups_bp.crear_grupo') }}", {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ numero: Number(numero), evaluacion_id: Number(evaluacion_id) })
+        });
+        if (res.ok) {
+          msg.textContent = 'Grupo creado.';
+          window.location.reload();
+        } else {
+          const data = await res.json().catch(() => ({}));
+          msg.textContent = data.error || 'Error al crear grupo';
+        }
+      } catch (err) {
+        msg.textContent = 'Error de red';
+      }
+    });
+  })();
+  </script>
+
   <p><a href="{{ url_for('evaluacion_bp.listar_evaluaciones') }}">Volver al listado</a></p>
 </body>
 </html>
