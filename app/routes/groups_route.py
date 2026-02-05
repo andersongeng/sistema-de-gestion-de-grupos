@@ -41,5 +41,5 @@ def crear_grupo():
 	return jsonify({"id": getattr(grupo, 'id', None), "numero": grupo.numero, "evaluacion_id": grupo.evaluacion_id}), 201
 
 @groups_bp.route('/grupos/<int:id>/estudiantes', methods=['POST'])
-def listar_estudiantes_grupo(id: int):
+def agregar_estudiantes_grupo(id: int):
 	pass
