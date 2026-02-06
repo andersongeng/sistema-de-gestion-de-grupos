@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  # Servicio 1: La Base de Datos
+  db:
+    image: postgres:15
+    container_name: postgres_db
+    restart: always
+    environment:
+      # Estos datos definen la BD al arrancar por primera vez
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      # Para que no se borren tus datos al apagar el contenedor
+      - postgres_data:/var/lib/postgresql/data
+
+  # Servicio 2: Tu Aplicación Flask
+  web:
+    build: .
+    volumes:
+      - .:/app
+    container_name: groups_app
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      # El host es "db" porque así se llama el servicio de arriba
+      DATABASE_URL: ${DATABASE_URL}
+      FLASK_APP: ${FLASK_APP}
+      FLASK_DEBUG: ${FLASK_DEBUG}
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
