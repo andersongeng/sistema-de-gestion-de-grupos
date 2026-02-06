@@ -17,8 +17,10 @@ def create_app(config_class=Config):
     # Register blueprints
     from app.routes.evaluacion_route import evaluacion_bp
     from app.routes.groups_route import groups_bp
+    from app.routes.base_route import base_bp
 
     app.register_blueprint(evaluacion_bp)
     app.register_blueprint(groups_bp)
+    app.register_blueprint(base_bp)
 
     return app
